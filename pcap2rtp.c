@@ -67,7 +67,8 @@ static void parse_packet(int datalink, const uint8_t *packet, const struct rtp_h
             return;
         }
 
-        udp = (struct udphdr *)&payload[ipheader->ip_hl * 4];
+        payload += ipheader->ip_hl * 4;
+        udp = (struct udphdr *)payload;
     } else if (protocol == ETH_P_IPV6) {
         fprintf(stderr, "not implemented yet");
         exit(1);
@@ -76,15 +77,7 @@ static void parse_packet(int datalink, const uint8_t *packet, const struct rtp_h
         return;
     }
 
-    if (udp) {
-        /* printf("sport: %d\n", ntohs(udp->uh_sport)); */
-        /* printf("dport: %d\n", ntohs(udp->uh_dport)); */
-
-        const uint8_t *data = (const uint8_t *)udp;
-        data += sizeof(struct udphdr);
-
-        *rtp = (struct rtp_hdr *)data;
-    }
+    *rtp = udp ? (struct rtp_hdr *)&payload[sizeof(*udp)] : NULL;
 }
 
 static pcap_t *pcap_start(const char *filename)
@@ -102,18 +95,19 @@ static void read_pcap(const char *filename)
 {
     const uint8_t *packet;
     struct pcap_pkthdr header;
+    int i;
+
     pcap_t *handle = pcap_start(filename);
     int datalink = pcap_datalink(handle);
 
-    int i = 1;
-    while ((packet = pcap_next(handle, &header))) {
+    for (i = 1; (packet = pcap_next(handle, &header)); ++i) {
         const struct rtp_hdr *rtp = NULL;
 
         parse_packet(datalink, packet, &rtp);
 
         size_t payload_len = header.caplen - ((const uint8_t *)rtp - packet);
 
-        printf("%d: ", i++);
+        printf("%d: ", i);
         describe_rtp(rtp);
         hex_dump("", rtp, payload_len);
     }
@@ -132,8 +126,10 @@ int main(int argc, char *argv[])
 
     pid_t pager = pager_start("FRSX");
 
-    for (i = 1; i < argc; ++i)
+    for (i = 1; i < argc; ++i) {
+        printf("Loading pcap %s...\n\n", argv[i]);
         read_pcap(argv[i]);
+    }
 
     return pager ? pager_wait(pager) : 0;
 }
