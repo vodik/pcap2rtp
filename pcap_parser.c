@@ -17,6 +17,8 @@
 #include "rtp.h"
 #include "util.h"
 
+int i = 1;
+
 static uint16_t parse_en10mb(const uint8_t *packet, const uint8_t **payload)
 {
     const struct ether_header *hdr = (struct ether_header *)packet;
@@ -86,6 +88,7 @@ void process_packet(int datalink, const uint8_t *packet, const struct pcap_pkthd
         size_t payload_len = header->caplen - (data - packet);
 
         struct rtp_hdr *hdr = (struct rtp_hdr *)data;
+        printf("%d: ", i++);
         describe_rtp(hdr);
         hex_dump("", data, payload_len);
     }
