@@ -56,18 +56,19 @@ static void parse_packet(int datalink, const uint8_t *packet, const struct rtp_h
     }
 
     if (protocol == ETH_P_IP) {
-        const struct ip *ipheader = (const struct ip *)payload;
-        if (ipheader->ip_v != IPVERSION) {
+        const struct ip *ipv4 = (const struct ip *)payload;
+
+        if (ipv4->ip_v != IPVERSION) {
             printf("Not a ipv4 packet\n");
             return;
         }
 
-        if (ipheader->ip_p != IPPROTO_UDP) {
+        if (ipv4->ip_p != IPPROTO_UDP) {
             printf("Not a UDP packet\n");
             return;
         }
 
-        payload += ipheader->ip_hl * 4;
+        payload += ipv4->ip_hl * 4;
         udp = (struct udphdr *)payload;
     } else if (protocol == ETH_P_IPV6) {
         fprintf(stderr, "not implemented yet");
