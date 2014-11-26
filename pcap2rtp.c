@@ -31,7 +31,7 @@ static uint16_t parse_linux_sll(const uint8_t *packet, const uint8_t **payload)
     return ntohs(hdr->sll_protocol);
 }
 
-static void parse_packet(int datalink, const uint8_t *packet, const struct rtp_hdr **rtp)
+void parse_packet(int datalink, const uint8_t *packet, const struct rtp_hdr **rtp)
 {
     uint16_t protocol = 0;
     const uint8_t *payload = NULL;
@@ -81,7 +81,7 @@ static void parse_packet(int datalink, const uint8_t *packet, const struct rtp_h
     *rtp = udp ? (struct rtp_hdr *)&payload[sizeof(*udp)] : NULL;
 }
 
-static pcap_t *pcap_start(const char *filename)
+pcap_t *pcap_start(const char *filename)
 {
     char err[PCAP_ERRBUF_SIZE];
 
@@ -116,21 +116,21 @@ static void read_pcap(const char *filename)
     pcap_close(handle);
 }
 
-int main(int argc, char *argv[])
-{
-    int i;
+/* int main(int argc, char *argv[]) */
+/* { */
+/*     int i; */
 
-    if (argc == 1) {
-        fprintf(stderr, "usage: %s [files...]\n", argv[0]);
-        return 1;
-    }
+/*     if (argc == 1) { */
+/*         fprintf(stderr, "usage: %s [files...]\n", argv[0]); */
+/*         return 1; */
+/*     } */
 
-    pid_t pager = pager_start("FRSX");
+/*     pid_t pager = pager_start("FRSX"); */
 
-    for (i = 1; i < argc; ++i) {
-        printf("Loading pcap %s...\n\n", argv[i]);
-        read_pcap(argv[i]);
-    }
+/*     for (i = 1; i < argc; ++i) { */
+/*         /1* read_pcap(argv[i]); *1/ */
+/*         dump_pcap(argv[i]); */
+/*     } */
 
-    return pager ? pager_wait(pager) : 0;
-}
+/*     return pager ? pager_wait(pager) : 0; */
+/* } */
