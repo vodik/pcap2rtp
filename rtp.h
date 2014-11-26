@@ -26,4 +26,4 @@ struct rtp_hdr {
     uint32_t rtp_ssrc;
 };
 
-void describe_rtp(struct rtp_hdr *hdr);
+void describe_rtp(const struct rtp_hdr *rtp);

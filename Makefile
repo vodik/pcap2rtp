@@ -7,7 +7,7 @@ CFLAGS := -std=c11 \
 LDLIBS = -lpcap
 
 all: pcap2rtp
-pcap2rtp: pcap2rtp.o pcap_parser.o rtp.o pager.o util.o
+pcap2rtp: pcap2rtp.o rtp.o pager.o util.o
 
 clean:
 	$(RM) pcap2rtp *.o

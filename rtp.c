@@ -13,24 +13,24 @@ static const char *payload_types[] = {
 };
 
 
-void describe_rtp(struct rtp_hdr *hdr)
+void describe_rtp(const struct rtp_hdr *rtp)
 {
-    if (hdr->rtp_ver != 2) {
+    if (rtp->rtp_ver != 2) {
         printf("not a rtp packet\n");
         return;
     }
 
-    if (hdr->rtp_payload == 19 || (hdr->rtp_payload >= 72 && hdr->rtp_payload <= 76)) {
-        printf("reserved protocol (%d)", hdr->rtp_payload);
-    } else if (hdr->rtp_payload < 35) {
-        const char *desc = payload_types[hdr->rtp_payload];
+    if (rtp->rtp_payload == 19 || (rtp->rtp_payload >= 72 && rtp->rtp_payload <= 76)) {
+        printf("reserved protocol (%d)", rtp->rtp_payload);
+    } else if (rtp->rtp_payload < 35) {
+        const char *desc = payload_types[rtp->rtp_payload];
 
         if (desc) {
             printf("%s rtp packet", desc);
         } else {
-            printf("packet with unknown protocol %d\n", hdr->rtp_payload);
+            printf("packet with unknown protocol %d\n", rtp->rtp_payload);
         }
-    } else if (hdr->rtp_payload >= 96 && hdr->rtp_payload <= 127) {
-        printf("dynamic rtp packet (%d)", hdr->rtp_payload);
+    } else if (rtp->rtp_payload >= 96 && rtp->rtp_payload <= 127) {
+        printf("dynamic rtp packet (%d)", rtp->rtp_payload);
     }
 }
