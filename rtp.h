@@ -21,6 +21,9 @@ struct rtp_hdr {
 #else
 #error "Adjust your <asm/byteorder.h> defines"
 #endif
+    uint16_t rtp_seq;
+    uint32_t rtp_timestamp;
+    uint32_t rtp_ssrc;
 };
 
 void describe_rtp(struct rtp_hdr *hdr);
