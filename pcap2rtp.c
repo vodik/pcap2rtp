@@ -31,6 +31,8 @@ static void play_rtp(const struct rtp_hdr *rtp, size_t len)
     int error;
     const uint8_t *ulaw = (const uint8_t *)rtp + sizeof(*rtp);
 
+    len -= sizeof(*rtp);
+
     pa_usec_t latency = pa_simple_get_latency(s, &error);
     if (latency == (pa_usec_t)-1)
         pa_err(EXIT_FAILURE, error, "pa_simple_get_latency failed");
