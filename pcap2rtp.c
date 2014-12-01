@@ -59,6 +59,7 @@ static int play_pcap(const char *filename)
         pa_err(EXIT_FAILURE, error, "pa_simple_new failed");
 
     find_rtp(filename, play_rtp);
+    printf("\n");
 
     if (pa_simple_drain(s, &error) < 0)
         pa_err(EXIT_FAILURE, error, "pa_simple_drain failed");
