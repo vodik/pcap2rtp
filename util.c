@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
+#include <pulse/simple.h>
+#include <pulse/error.h>
 
 void hex_dump(const char *desc, const void *addr, size_t len)
 {
@@ -34,4 +36,21 @@ void hex_dump(const char *desc, const void *addr, size_t len)
     for (; i % 16 != 0; ++i)
         printf(i % 2 ? "  " : "   ");
     printf("  %s\n", readable);
+}
+
+void _noreturn_ _printf_(3,4) pa_err(int eval, int error, const char *fmt, ...)
+{
+    fprintf(stderr, "%s: ", program_invocation_short_name);
+
+    if (fmt) {
+        va_list ap;
+
+        va_start(ap, fmt);
+        vfprintf(stderr, fmt, ap);
+        va_end(ap);
+        fprintf(stderr, ": ");
+    }
+
+    fprintf(stderr, "%s\n", pa_strerror(error));
+    exit(eval);
 }
