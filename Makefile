@@ -10,8 +10,8 @@ libpulse_LDLIBS = $(shell pkg-config --libs libpulse-simple)
 LDLIBS = -lpcap ${libpulse_LDLIBS}
 
 # all: pcap2rtp pulse
-all: pulse
-pcap2rtp: pcap2rtp.o rtp.o pager.o util.o
+all: pcap2rtp
+pcap2rtp: pcap2rtp.o parser.o rtp.o pager.o util.o
 pulse: pulse.o pcap2rtp.o rtp.o util.o
 
 clean:
