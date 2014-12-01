@@ -66,15 +66,20 @@ static int play_pcap(const char *filename)
 
 int main(int argc, char *argv[])
 {
-    const char *filename = argv[1];
+    const char *command = argv[1];
+    const char *filename = argv[2];
 
-    if (argc != 2) {
-        fprintf(stderr, "usage: %s [files]\n", argv[0]);
+    if (argc != 3) {
+        fprintf(stderr, "usage: %s <command> [files]\n", argv[0]);
         return 1;
     }
 
-    if (false)
+    if (streq(command, "dump"))
         return dump_pcap(filename);
-    else
+    else if (streq(command, "play"))
         return play_pcap(filename);
+    else
+        printf("didn't understand command '%s'\n", command);
+
+    return 1;
 }
