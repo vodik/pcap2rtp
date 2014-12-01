@@ -4,12 +4,17 @@ CFLAGS := -std=c11 \
 	-D_GNU_SOURCE \
 	$(CFLAGS)
 
-LDLIBS = -lpcap
+libpulse_CFLAGS = $(shell pkg-config --cflags libpulse-simple)
+libpulse_LDLIBS = $(shell pkg-config --libs libpulse-simple)
 
+LDLIBS = -lpcap ${libpulse_LDLIBS}
+
+# all: pcap2rtp pulse
 all: pcap2rtp
-pcap2rtp: pcap2rtp.o rtp.o pager.o util.o
+pcap2rtp: pcap2rtp.o parser.o rtp.o pager.o util.o
+pulse: pulse.o pcap2rtp.o rtp.o util.o
 
 clean:
-	$(RM) pcap2rtp *.o
+	$(RM) pcap2rtp pulse *.o
 
 .PHONY: clean

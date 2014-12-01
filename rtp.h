@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 #include <asm/byteorder.h>
 
@@ -27,3 +28,5 @@ struct rtp_hdr {
 };
 
 void describe_rtp(const struct rtp_hdr *rtp);
+void ulaw_decode(const uint8_t *in, int16_t *out, size_t len);
+void alaw_decode(const uint8_t *in, int16_t *out, size_t len);

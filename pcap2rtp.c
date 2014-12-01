@@ -1,136 +1,85 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <string.h>
-#include <err.h>
+#include <pulse/simple.h>
+#include <pulse/error.h>
 
-#include <pcap.h>
-#include <pcap/sll.h>
-#include <net/ethernet.h>
-#include <netinet/ip.h>
-#include <netinet/ip6.h>
-#include <netinet/udp.h>
-#include <arpa/inet.h>
-
-#include "pager.h"
+#include "parser.h"
 #include "rtp.h"
+#include "pager.h"
 #include "util.h"
 
-static uint16_t parse_en10mb(const uint8_t *packet, const uint8_t **payload)
+pa_simple *s = NULL;
+
+static void dump_rtp(const struct rtp_hdr *rtp, size_t len)
 {
-    const struct ether_header *hdr = (struct ether_header *)packet;
-    *payload = &packet[sizeof(*hdr)];
-    return ntohs(hdr->ether_type);
+    static int i = 1;
+
+    printf("%d: ", i++);
+    describe_rtp(rtp);
+    hex_dump("", rtp, len);
 }
 
-static uint16_t parse_linux_sll(const uint8_t *packet, const uint8_t **payload)
+static int dump_pcap(const char *filename)
 {
-    const struct sll_header *hdr = (struct sll_header *)packet;
-    *payload = &packet[sizeof(*hdr)];
-    return ntohs(hdr->sll_protocol);
+    pid_t pager = pager_start("FRSX");
+    find_rtp(filename, &dump_rtp);
+    return pager ? pager_wait(pager) : 0;
 }
 
-static void parse_packet(int datalink, const uint8_t *packet, const struct rtp_hdr **rtp)
+static void play_rtp(const struct rtp_hdr *rtp, size_t len)
 {
-    uint16_t protocol = 0;
-    const uint8_t *payload = NULL;
-    const struct udphdr *udp = NULL;
+    int error;
+    const uint8_t *ulaw = (const uint8_t *)rtp + sizeof(*rtp);
 
-    switch (datalink) {
-    case DLT_NULL:
-        printf("Don't understand DLT_NULL\n");
-        break;
-    case DLT_EN10MB:
-        protocol = parse_en10mb(packet, &payload);
-        break;
-    case DLT_RAW:
-        printf("Don't understand DLT_RAW\n");
-        break;
-    case DLT_LINUX_SLL:
-        protocol = parse_linux_sll(packet, &payload);
-        break;
-    default:
-        printf("Don't understand datalink\n");
-        break;
-    }
+    pa_usec_t latency = pa_simple_get_latency(s, &error);
+    if (latency == (pa_usec_t)-1)
+        pa_err(EXIT_FAILURE, error, "pa_simple_get_latency failed");
+    fprintf(stderr, " %0.0f usec latency  \r", (float)latency);
 
-    if (protocol == ETH_P_IP) {
-        const struct ip *ipv4 = (const struct ip *)payload;
+    int16_t pcm[len];
+    ulaw_decode(ulaw, pcm, len);
 
-        if (ipv4->ip_v != IPVERSION) {
-            printf("Not a ipv4 packet\n");
-            return;
-        }
-
-        if (ipv4->ip_p != IPPROTO_UDP) {
-            printf("Not a UDP packet\n");
-            return;
-        }
-
-        payload += ipv4->ip_hl * 4;
-        udp = (struct udphdr *)payload;
-    } else if (protocol == ETH_P_IPV6) {
-        fprintf(stderr, "not implemented yet");
-        exit(1);
-    } else {
-        printf("protocol: 0x%x unrecognized\n", protocol);
-        return;
-    }
-
-    *rtp = udp ? (struct rtp_hdr *)&payload[sizeof(*udp)] : NULL;
+    if (pa_simple_write(s, pcm, len * sizeof(int16_t), &error) < 0)
+        pa_err(EXIT_FAILURE, error, "pa_simple_write failed");
 }
 
-static pcap_t *pcap_start(const char *filename)
+static int play_pcap(const char *filename)
 {
-    char err[PCAP_ERRBUF_SIZE];
+    pa_sample_spec ss = {
+        .format = PA_SAMPLE_S16NE,
+        .rate = 8000,
+        .channels = 1
+    };
 
-    pcap_t *handle = pcap_open_offline(filename, err);
-    if (!handle)
-        errx(1, "couldn't open pcap file %s", filename);
+    int error;
+    s = pa_simple_new(NULL, "pcap2rtp", PA_STREAM_PLAYBACK, NULL, "playback", &ss, NULL, NULL, &error);
+    if (!s)
+        pa_err(EXIT_FAILURE, error, "pa_simple_new failed");
 
-    return handle;
-}
+    find_rtp(filename, play_rtp);
 
-static void read_pcap(const char *filename)
-{
-    const uint8_t *packet;
-    struct pcap_pkthdr header;
-    int i;
+    if (pa_simple_drain(s, &error) < 0)
+        pa_err(EXIT_FAILURE, error, "pa_simple_drain failed");
 
-    pcap_t *handle = pcap_start(filename);
-    int datalink = pcap_datalink(handle);
-
-    for (i = 1; (packet = pcap_next(handle, &header)); ++i) {
-        const struct rtp_hdr *rtp = NULL;
-
-        parse_packet(datalink, packet, &rtp);
-
-        size_t payload_len = header.caplen - ((const uint8_t *)rtp - packet);
-
-        printf("%d: ", i);
-        describe_rtp(rtp);
-        hex_dump("", rtp, payload_len);
-    }
-
-    pcap_close(handle);
+    return 0;
 }
 
 int main(int argc, char *argv[])
 {
-    int i;
+    const char *command = argv[1];
+    const char *filename = argv[2];
 
-    if (argc == 1) {
-        fprintf(stderr, "usage: %s [files...]\n", argv[0]);
+    if (argc != 3) {
+        fprintf(stderr, "usage: %s <command> [files]\n", argv[0]);
         return 1;
     }
 
-    pid_t pager = pager_start("FRSX");
+    if (streq(command, "dump"))
+        return dump_pcap(filename);
+    else if (streq(command, "play"))
+        return play_pcap(filename);
+    else
+        printf("didn't understand command '%s'\n", command);
 
-    for (i = 1; i < argc; ++i) {
-        printf("Loading pcap %s...\n\n", argv[i]);
-        read_pcap(argv[i]);
-    }
-
-    return pager ? pager_wait(pager) : 0;
+    return 1;
 }
